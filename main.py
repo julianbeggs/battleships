@@ -7,7 +7,7 @@ import random
 from pprint import pprint, pformat
 
 # game config
-BOARD_SIZE = 15
+BOARD_SIZE = 12
 SHIPS = [
     {"name": "Carrier", "size": 5},
     {"name": "Battleship", "size": 4},
@@ -134,6 +134,7 @@ def get_target_coords(coords_history):
     coords_valid = False
     while not coords_valid:
         try:
+            print()
             xcoord, ycoord = input(
                 "Please enter target coordinates eg. 5 7  => ").split(" ")
             xcoord = int(xcoord)  # will raise error if cannot be cast to int
@@ -156,6 +157,8 @@ def get_target_coords(coords_history):
         os.system('clear') # clear the Screen
     elif platform.system()=='Darwin':
         os.system('clear') # clear the Screen
+    elif platform.system()==None:
+        for i in range(40): print() # clear the Screen
 
     print(f"Firing on: {xcoord}, {ycoord}")
     
@@ -221,3 +224,16 @@ if __name__ == "__main__":
     while not gameover(ships):
         player_turn(ships, fleet_board, game_board, coords_history)
         for i in range(5): print()
+        
+    for i in range(5): print()
+    print("******************************************************************************")
+    print("******************************************************************************")
+    print()
+    print("              CONGRATULATIONS YOU HAVE DESTROYED THE ENEMY FLEET")
+    print()
+    print("******************************************************************************")
+    print("******************************************************************************")
+    print()
+    print()
+    
+    
