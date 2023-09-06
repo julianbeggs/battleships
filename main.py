@@ -2,10 +2,11 @@
 # written by julian beggs, august 2023
 
 import os
+import platform
 import random
-from pprint import pprint
+from pprint import pprint, pformat
 
-# Constants
+# game config
 BOARD_SIZE = 15
 SHIPS = [
     {"name": "Carrier", "size": 5},
@@ -27,8 +28,9 @@ def initialize_game():
     rows = BOARD_SIZE
     cols = BOARD_SIZE
     ships = SHIPS.copy()
-    fleet_board = [[0 for col in range(cols)] for row in range(rows)]  # new board filled with 0s
-    game_board = [[0 for col in range(cols)] for row in range(rows)]  # new board filled with 0s
+    fleet_board = [[0 for col in range(cols)] for row in range(rows)]  # new board filled with 0s to track the fleet (not visible to player)
+    game_board = [[0 for col in range(cols)] for row in range(rows)]  # empty board to mark hits & misses (player can see this board)
+    coords_history = []
 
     for ship in ships:
         name = ship["name"]
@@ -48,7 +50,7 @@ def initialize_game():
         print()
         print(f"{name} sailing at: {position[0]+1, position[1]+1}.")
     
-    return ships, fleet_board, game_board
+    return ships, fleet_board, game_board, coords_history
 
 
 def insert_ship(name, row, col, orientation, size, fleet_board):
@@ -106,11 +108,12 @@ def insert_ship(name, row, col, orientation, size, fleet_board):
 
     return ship_pos, fleet_board
 
-def player_turn(ships, fleet_board, game_board):
+def player_turn(ships, fleet_board, game_board, coords_history):
     '''On each turn, get coordinates from player. Check if hit or miss, hit and sunk, update indicators and progress display'''
 
     # get target coords
-    xcoord, ycoord = get_target_coords() # coord 1-indexed
+    xcoord, ycoord, coords_history = get_target_coords(coords_history) # coord 1-indexed
+    
     row = xcoord -1; col = ycoord -1    # convert to 0 indexed row, col
     
     #Check if hit or miss
@@ -122,9 +125,9 @@ def player_turn(ships, fleet_board, game_board):
             print(f"{ship['name']} has been sunk!! Well done!!")
             ship['status'] = "SUNK"
     
-    return ships, fleet_board, game_board
+    return ships, fleet_board, game_board, coords_history
         
-def get_target_coords():
+def get_target_coords(coords_history):
     '''On each turn, get coordinates from player.'''
 
     # get target coordinates
@@ -135,38 +138,45 @@ def get_target_coords():
                 "Please enter target coordinates eg. 5 7  => ").split(" ")
             xcoord = int(xcoord)  # will raise error if cannot be cast to int
             ycoord = int(ycoord)
-            if (xcoord in range(1, BOARD_SIZE+1) and ycoord in range(1, BOARD_SIZE+1)):
+            if (xcoord in range(1, BOARD_SIZE+1) and ycoord in range(1, BOARD_SIZE+1)) and not (xcoord, ycoord) in coords_history:
+                coords_history.append((xcoord, ycoord))
                 coords_valid = True
             else:
                 raise ValueError
         except ValueError:
-            print(
-                f"Try Again. Enter two integers between 1 and {BOARD_SIZE} separated by a single space.")
+            print(f"Try Again. Enter two numbers between 1 and {BOARD_SIZE} separated by a single space. You cannot repeat previous targets.")
+            print("You have targeted these coordinates already:"); pprint(f"{coords_history}")
             coords_valid = False
 
-    os.system('clear') # clear the Screen
+    # platform.system() Returns the system/OS name, such as 'Linux', 'Darwin', 'Java', 'Windows'. 
+    # An empty string is returned if the value cannot be determined.
+    if platform.system()=='Windows':
+        os.system('cls') # clear the Screen
+    elif platform.system()=='Linux':
+        os.system('clear') # clear the Screen
+    elif platform.system()=='Darwin':
+        os.system('clear') # clear the Screen
+
     print(f"Firing on: {xcoord}, {ycoord}")
-    return xcoord, ycoord
+    
+    return xcoord, ycoord, coords_history
     
 
 def is_hit(row, col, ships, fleet_board, game_board):
     '''check is coords hit ship and if so update ships damage/sunk status'''
     
-    shot_hit = fleet_board[row][col] > 0
-    if shot_hit:
+    if fleet_board[row][col] == 1:
         # which ship got hit
         for ship in ships:
             ship_rowcols = get_ship_rowcols(ship["position"])
             if (row, col) in ship_rowcols:
                 print(f"{ship['name']} has been hit at ({row+1}, {col+1})")
-                # update ship damage
-                ship['damage'] += 1
+                ship['damage'] += 1  # update ship damage
                 print(f"{ship['name']} has {ship['size']-ship['damage']} points left.")
-                # update board with hit indicator
-                game_board[row][col] = 6
+                game_board[row][col] = 6   # update game_board with hit indicator
     else:
         print(f"That's a miss at ({row+1}, {col+1})")
-        # update board with miss indicator
+        # update game_board with miss indicator
         game_board[row][col] = 9
 
     return ships, fleet_board, game_board
@@ -193,12 +203,21 @@ def gameover(ships):
         print(f"SHIP:{ship['name']} DAMAGE:{ship['damage']}/{ship['size']} STATUS:{ship['status']}")
         
     print(f"Game progress: {total_fleet_damage}/{total_fleet_size}")
+    for i in range(2): print()
+    # show board here
+    show_board(game_board)
 
     return True if total_fleet_damage == total_fleet_size else False
 
+def show_board(board):
+    _board = pformat(board)
+    chars_to_replace = [(",", ""), ("[[", " "), ("[", ""), ("]]", ""), ("]", "")]
+    for (orig, dest) in chars_to_replace:
+        _board = _board.replace(orig, dest)   
+    print(_board)
 
 if __name__ == "__main__":
-    ships, fleet_board, game_board = initialize_game()
+    ships, fleet_board, game_board, coords_history = initialize_game()
     while not gameover(ships):
-        player_turn(ships, fleet_board, game_board)
-        for i in range(2): print()
+        player_turn(ships, fleet_board, game_board, coords_history)
+        for i in range(5): print()
